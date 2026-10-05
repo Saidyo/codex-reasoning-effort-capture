@@ -1,52 +1,62 @@
 # Codex / AnyRouter 思考强度抓取
 
-Windows 本机被动抓包工具，带轻量浏览器界面，逐次对比 Codex 请求中的 `reasoning.effort` 与返回的 `response.completed` 事件中的 `response.reasoning.effort`。
+Windows 本机被动抓包工具，带轻量浏览器界面，逐次对比 Codex 请求中的 `reasoning.effort` 与响应 `response.completed` 事件中的 `response.reasoning.effort`。
 
-**响应字段是服务端报告值。脚本不能独立证明上游模型的内部执行强度，也不会用推理 token 数推算强度。**
+> **注意：响应字段是服务端报告值。本工具不能独立证明上游模型的内部执行强度，也不会用推理 token 数推算强度。**
 
-## 可视化界面（推荐）
+![界面预览](preview.png)
 
-**双击 `StartUI.cmd`**，会自动在默认浏览器打开本机界面。也可以在 PowerShell 中运行：
+## 工作原理
 
-```powershell
-& 'E:\AI\repo\anygpt思考强度抓取\Start.ps1' -UI
+本机链路已核实为：
+
+```
+Codex → http://127.0.0.1:18080/v1/responses → CC Switch → AnyRouter
 ```
 
-保持 CC Switch 正常运行，在页面点击“开始抓取”，然后正常使用 Codex。**默认持续抓取，限定会话留空即可自动记录所有新对话，无需重开工具。** 请求的完整 HTTP 响应结束后自动显示。
+工具通过 Npcap 被动监听本机回环流量，在内存中重组 TCP/HTTP，提取请求与响应中的强度字段并逐条对照。**不会改动 Codex / CC Switch 配置，也不会额外发送任何模型请求。**
 
-列表的“对话”列和请求详情显示真实对话名称，可以搜索名称、会话 ID、模型或请求 ID。名称直接读取本机 Codex 的 `session_index.jsonl`（`id` → `thread_name`）和只读 `state_5.sqlite`（`threads.id` → `threads.name`，优先采用数据库名称），不读取首条提示词充当名称。运行中每 5 秒最多刷新一次，新增会话 ID 会立即触发查询；Codex 写入名称后，前台抓取页面通常在 7 秒内更新，重命名也无需重启。未写入或无法读取时显示“等待对话名称”，详情保留精确 ID。支持 `CODEX_HOME`，未设置时使用用户目录下的 `.codex`。
+## 环境要求
 
-抓取批次下拉框显示开始时间，同一批次可以包含多个对话。仍可设置限时时长、端口与精确会话 ID，筛选差异、查看详情和导出 CSV。开始新批次后自动切换到新记录。名称只在显示时关联，不改写已有抓包文件；CSV 保留抓取时的原始字段。
+- Windows
+- Python 3.11 或以上
+- 已安装 Npcap（抓包依赖）
 
-“停止”只停止抓包，仍可查看记录；“退出界面”会结束抓包和本地服务。**仅关闭浏览器标签页不会结束服务**，也可以关闭启动窗口或在启动窗口按 Ctrl+C。界面地址只绑定 `127.0.0.1`，端口自动选择，启动窗口会显示地址。
+运行时依赖仅 `dpkt==1.9.8`，首次启动自动创建 `.venv` 并安装。
+
+## 快速开始（可视化界面，推荐）
+
+**双击 `StartUI.cmd`**，自动在默认浏览器打开本机界面。也可以在 PowerShell 中运行：
+
+```powershell
+.\Start.ps1 -UI
+```
+
+保持 CC Switch 正常运行，在页面点击「开始抓取」，然后正常使用 Codex。**默认持续抓取，限定会话留空即可自动记录所有新对话，无需重开工具。** 请求的完整 HTTP 响应结束后自动显示。
+
+- 列表的「对话」列和请求详情显示真实对话名称，可搜索名称、会话 ID、模型或请求 ID。名称直接读取本机 Codex 的 `session_index.jsonl`（`id` → `thread_name`）和只读 `state_5.sqlite`（`threads.id` → `threads.name`，优先采用数据库名称），不读取首条提示词充当名称。
+- 运行中每 5 秒最多刷新一次，新增会话 ID 立即触发查询；Codex 写入名称后，前台页面通常在 7 秒内更新，重命名也无需重启。未写入或无法读取时显示「等待对话名称」，详情保留精确 ID。支持 `CODEX_HOME`，未设置时使用用户目录下的 `.codex`。
+- 抓取批次下拉框显示开始时间，同一批次可包含多个对话。仍可设置限时时长、端口与精确会话 ID，筛选差异、查看详情和导出 CSV。开始新批次后自动切换到新记录。
+- 名称只在显示时关联，不改写已有抓包文件；CSV 保留抓取时的原始字段。
+- 「停止」只停止抓包，仍可查看记录；「退出界面」会结束抓包和本地服务。**仅关闭浏览器标签页不会结束服务**，也可以关闭启动窗口或在启动窗口按 Ctrl+C。界面地址只绑定 `127.0.0.1`，端口自动选择，启动窗口会显示地址。
 
 ### 资源占用
 
 - 不新增运行时依赖，不使用 Electron、Node 服务、前端框架、外部字体或图表库。
 - 页面与抓包共用一个 Python 进程；只有点击开始后才打开 Npcap 并创建抓包线程，停止后关闭设备并退出该线程。
 - 静态页面约 27 KB；请求列表只保留最近 300 条，历史 JSONL 增量读取、每次最多读取 1 MiB。完整记录仍保存在磁盘，CSV 可导出全部已保存记录。
-- 抓取中每 2 秒刷新、空闲每 10 秒刷新；标签页隐藏时暂停刷新，重新显示时补读。第一次加载较大历史文件时每 300 ms 分批读取，直到读完。
+- 抓取中每 2 秒刷新、空闲每 10 秒刷新；标签页隐藏时暂停刷新，重新显示时补读。首次加载较大历史文件时每 300 ms 分批读取，直到读完。
 - Npcap 接收缓冲固定为 8 MiB，避免默认缓冲在大请求突发时溢出；停止抓取即释放。名称查询没有额外后台进程，索引按字节增量读取，数据库只查询当前列表的 ID。
-- 新版持续抓取时 Python 后端实测约 31.6 MiB，5 秒采样 CPU 增量为 0，没有子进程。**采样值不包含浏览器和驱动缓冲，流量期间的峰值会变化。**
+- 持续抓取时 Python 后端实测约 31.6 MiB，5 秒采样 CPU 增量为 0，没有子进程。**采样值不包含浏览器和驱动缓冲，流量期间的峰值会变化。**
 
 实现与验证说明见 [UI-NOTES.md](UI-NOTES.md)。
 
-## 命令行启动
-
-本机链路已核实为 `Codex → http://127.0.0.1:18080/v1/responses → CC Switch → AnyRouter`。
-
-需要 Windows、Python 3.11 或以上、已安装的 Npcap。当前机器已具备 Python 和 Npcap 1.83。
-
-在 PowerShell 中运行：
+## 命令行用法
 
 ```powershell
-cd 'E:\AI\repo\anygpt思考强度抓取'
+# 默认抓取 5 分钟，正常使用 Codex 即可
 .\Start.ps1
-```
 
-首次启动会在本目录创建 `.venv` 并安装 `dpkt==1.9.8`。默认抓取 5 分钟，正常使用 Codex 即可。不会改动 Codex / CC Switch 配置，不会额外发送模型请求。
-
-```powershell
 # 检查本机抓包能力
 .\Start.ps1 -Doctor
 
@@ -66,7 +76,7 @@ cd 'E:\AI\repo\anygpt思考强度抓取'
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\Start.ps1
 ```
 
-也可以使用已安装依赖的 Python：
+也可以直接使用 Python：
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -82,7 +92,7 @@ python capture.py --count 3 --seconds 300
 | `summary.csv` | Excel 可打开的逐请求对照表 |
 | `records.jsonl` | 每行一条完整记录，适合后续自动分析 |
 | `0001.json` 等 | 单次请求元数据、响应快照、字段路径对应值与摘要 |
-| `0001.response.sse` 等 | 完整 HTTP 响应体，已经去除 HTTP 分块编码 |
+| `0001.response.sse` 等 | 完整 HTTP 响应体，已去除 HTTP 分块编码 |
 | `status.json` | 运行状态、样本数、重组错误、未完成连接、Npcap 丢包统计 |
 
 关键字段：
@@ -100,7 +110,7 @@ python capture.py --count 3 --seconds 300
 
 同时保留 `response.created`、`response.in_progress`、`response.completed` 的响应元数据快照。请求侧只保存模型、强度、服务档位和关联 ID 等选定字段；不保存请求提示词或 Authorization/Cookie。**原始 SSE 可能包含回答、工具调用内容和项目文本，分享前应检查。**
 
-一次用户提问通常会产生多次模型请求。按 HTTP 交互逐条记录，不把整轮聊天合并为一个强度值。
+一次用户提问通常会产生多次模型请求。本工具按 HTTP 交互逐条记录，不把整轮聊天合并为一个强度值。
 
 ## 已实测的边界
 
@@ -118,8 +128,19 @@ python capture.py --count 3 --seconds 300
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-协议重组测试覆盖超过 64 KiB 的请求、乱序重传、缺段、分块扩展/尾部字段、UTF-8 与 TCP 序号回绕。字段对照测试使用本次实测响应提取的脱敏固定样本，不猜测 JSON 路径。
+协议重组测试覆盖超过 64 KiB 的请求、乱序重传、缺段、分块扩展/尾部字段、UTF-8 与 TCP 序号回绕。字段对照测试使用实测响应提取的脱敏固定样本，不猜测 JSON 路径。
 
-Windows / Npcap 真实回环回归：`.\.venv\Scripts\python.exe .\tests\verify_loopback.py`。它只向临时本地 HTTP 服务发送测试数据，不调用模型 API，不写入正式抓取目录。
+Windows / Npcap 真实回环回归：
+
+```powershell
+.\.venv\Scripts\python.exe .\tests\verify_loopback.py
+```
+
+它只向临时本地 HTTP 服务发送测试数据，不调用模型 API，不写入正式抓取目录。
 
 实际观测结论和证据位置见 [OBSERVATIONS.md](OBSERVATIONS.md)。
+
+## 相关文档
+
+- [UI-NOTES.md](UI-NOTES.md) — 界面实现与验证说明
+- [OBSERVATIONS.md](OBSERVATIONS.md) — 实际观测结论与证据位置
