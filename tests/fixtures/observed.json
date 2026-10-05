@@ -1,0 +1,50 @@
+{
+  "source": "Projection of live capture on 2026-10-05; identifiers and content omitted.",
+  "request": {
+    "model": "gpt-6-astra",
+    "reasoning": {
+      "effort": "xhigh",
+      "context": "all_turns"
+    },
+    "service_tier": "priority"
+  },
+  "events": [
+    {
+      "type": "response.created",
+      "response": {
+        "model": "gpt-6-astra",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "high",
+          "mode": "standard",
+          "summary": null
+        },
+        "usage": null
+      }
+    },
+    {
+      "type": "response.completed",
+      "response": {
+        "model": "gpt-6-astra",
+        "reasoning": {
+          "context": "all_turns",
+          "effort": "high",
+          "mode": "standard",
+          "summary": null
+        },
+        "usage": {
+          "input_tokens": 85608,
+          "input_tokens_details": {
+            "cache_write_tokens": 746,
+            "cached_tokens": 84859
+          },
+          "output_tokens": 482,
+          "output_tokens_details": {
+            "reasoning_tokens": 39
+          },
+          "total_tokens": 86090
+        }
+      }
+    }
+  ]
+}

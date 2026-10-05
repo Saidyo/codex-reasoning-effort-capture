@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="anygpt-token" content="__TOKEN__">
+  <title>思考强度 · 本地监测</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">≋</span><span>ANYGPT <span class="brand-sub">/ 本地监测</span></span></div>
+    <div class="top-actions"><span class="local-label"><span class="dot"></span>仅本机访问</span><button id="quit" class="quiet">退出界面 ↗</button></div>
+  </header>
+  <main>
+    <section class="heading">
+      <div><p class="eyebrow">REASONING MONITOR</p><h1>每一次请求，<br class="mobile-break">看清强度差异。</h1><p class="subtitle">对照 Codex 发出的设置与服务端响应中的报告值。</p></div>
+      <div class="capture-state" id="capture-state" role="status"><span class="dot"></span><span id="state-label">连接中</span></div>
+    </section>
+    <section class="capture-controls" aria-label="抓取设置">
+      <div class="fields">
+        <label>代理端口<input id="port" type="number" min="1" max="65535" value="18080" inputmode="numeric"></label>
+        <label>抓取时长<select id="duration"><option value="0">持续抓取</option><option value="300">5 分钟</option><option value="1800">30 分钟</option></select></label>
+        <label class="thread-field">限定会话 <span class="optional">可选</span><input id="thread" type="text" maxlength="256" placeholder="留空，自动记录所有新对话" spellcheck="false"></label>
+      </div>
+      <div class="capture-buttons"><button id="start" class="primary"><span aria-hidden="true">▶</span> 开始抓取</button><button id="stop" class="secondary" disabled><span aria-hidden="true">■</span> 停止</button></div>
+    </section>
+    <p id="capture-info" class="capture-info" role="status">默认持续记录所有对话，新开对话无需重启。</p>
+    <p id="message" class="message" role="alert" hidden></p>
+    <section class="stats" aria-label="所选记录概览">
+      <div class="stat"><span class="stat-label">已记录请求</span><strong id="total">—</strong><span class="stat-note">当前记录目录</span></div>
+      <div class="stat"><span class="stat-label">强度不同</span><strong id="different" class="amber-text">—</strong><span id="ratio" class="stat-note">等待数据</span></div>
+      <div class="stat"><span class="stat-label">信息不足</span><strong id="unknown">—</strong><span class="stat-note">缺失的值不作推断</span></div>
+      <div class="reading-note"><span class="note-icon" aria-hidden="true">i</span><p><strong>如何理解结果</strong><br>“响应强度”是服务端报告值，不能独立证明模型内部的实际执行强度。</p></div>
+    </section>
+    <section class="records" aria-labelledby="records-title">
+      <div class="records-heading"><div><h2 id="records-title">请求记录</h2><p id="run-caption">正在读取本地记录…</p></div><a id="export" class="secondary" aria-disabled="true">导出 CSV ↓</a></div>
+      <div class="table-controls">
+        <label class="run-label"><span class="sr-only">抓取批次</span><select id="runs" aria-label="抓取批次"><option value="">暂无记录</option></select></label>
+        <div class="filters"><label class="search-label"><span class="sr-only">搜索对话名称、模型或 ID</span><input id="search" type="search" placeholder="搜索对话名称 / 模型 / ID"></label><label class="check-label"><input id="only-different" type="checkbox">仅看差异</label><button id="refresh" class="quiet" aria-label="刷新记录">↻ 刷新</button></div>
+      </div>
+      <div class="table-scroll"><table><thead><tr><th scope="col">时间</th><th scope="col">对话</th><th scope="col">模型</th><th scope="col">请求 → 响应</th><th scope="col">推理 tokens</th><th scope="col">对照结果</th><th scope="col"><span class="sr-only">详情</span></th></tr></thead><tbody id="rows"></tbody></table></div>
+      <div id="empty" class="empty" hidden><span class="empty-icon" aria-hidden="true">≋</span><h3 id="empty-title">等待第一条请求</h3><p id="empty-copy">点击开始抓取，然后正常使用 Codex。请求完成后会出现在这里。</p></div>
+      <div class="table-footer"><span id="row-count">0 条记录</span><span id="updated" aria-live="off">等待连接</span></div>
+    </section>
+    <footer class="page-footer"><span>本地处理 · 记录保存在 captures 目录</span><span>页面隐藏时暂停刷新</span></footer>
+  </main>
+  <dialog id="detail"><div class="dialog-heading"><div><p class="eyebrow">REQUEST DETAIL</p><h2>请求详情</h2></div><button id="close-detail" class="quiet" aria-label="关闭详情">✕</button></div><div id="detail-content"></div><button id="copy-id" class="secondary">复制上游请求 ID</button><p id="copy-status" class="muted" role="status"></p></dialog>
+  <dialog id="quit-dialog"><h2>退出本地监测？</h2><p class="subtitle">正在进行的抓取也会停止，已经保存的记录会保留。</p><div class="dialog-actions"><button id="cancel-quit" class="secondary">返回</button><button id="confirm-quit" class="primary">停止并退出</button></div></dialog>
+</body>
+</html>
